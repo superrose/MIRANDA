@@ -19,6 +19,20 @@ Optional filter fields: minBudget, type ("HDB"/"condo"/"room"/"studio"), beds, r
 
 Keep responses short, warm, and helpful. Always respond in English.`;
 
+// Keywords that indicate the user actually wants to find a property
+const PROPERTY_KEYWORDS = [
+  'room', 'condo', 'hdb', 'apartment', 'flat', 'studio', 'rent', 'rental',
+  'budget', 'sgd', 'bedroom', 'bed', 'looking for', 'find', 'search',
+  'orchard', 'bugis', 'jurong', 'tampines', 'bishan', 'clementi', 'toa payoh',
+  'kallang', 'novena', 'woodlands', 'yishun', 'punggol', 'sengkang', 'ang mo kio',
+  'per month', '$/month', 'mrt', 'furnished', 'pet'
+];
+
+function userWantsToSearch(message) {
+  const lower = message.toLowerCase();
+  return PROPERTY_KEYWORDS.some(kw => lower.includes(kw));
+}
+
 class PropertyAgent {
   async chat(session, userMessage) {
     session.messages.push({ role: 'user', content: userMessage });
@@ -45,7 +59,8 @@ class PropertyAgent {
     const reply = response.data.choices[0].message.content;
     session.messages.push({ role: 'assistant', content: reply });
 
-    if (reply.includes('READY_TO_SEARCH:')) {
+    // Only trigger search if AI wants to AND user's message contains property keywords
+    if (reply.includes('READY_TO_SEARCH:') && userWantsToSearch(userMessage)) {
       const jsonStr = reply.split('READY_TO_SEARCH:')[1].trim().split('\n')[0];
       try {
         session.filters = JSON.parse(jsonStr);
@@ -56,7 +71,7 @@ class PropertyAgent {
       }
     }
 
-    return { action: 'chat', message: reply };
+    return { action: 'chat', message: reply.replace(/READY_TO_SEARCH:[^\n]*/g, '').trim() };
   }
 
   async recommendListings(session, listings) {
