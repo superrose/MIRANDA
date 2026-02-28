@@ -31,17 +31,20 @@ app.post('/chat', async (req, res) => {
       console.log('🔍 开始搜索房源，筛选条件:', result.filters);
       const listings = await scraperOrchestrator.searchAll(result.filters);
       const recommendation = await agent.recommendListings(sess, listings);
+      const audioBase64 = await speakText(recommendation);
       sessionManager.saveSession(sessionId, sess);
       return res.json({
         sessionId,
         message: recommendation,
         listings: listings.slice(0, 5),
+        audioBase64,
         searchCompleted: true
       });
     }
 
+    const audioBase64 = await speakText(result.message);
     sessionManager.saveSession(sessionId, sess);
-    res.json({ sessionId, message: result.message });
+    res.json({ sessionId, message: result.message, audioBase64 });
   } catch (err) {
     console.error('Chat error:', err.message);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });

@@ -1,26 +1,42 @@
 require('dotenv').config();
-const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
-
-const elevenlabs = new ElevenLabsClient({
-  apiKey: process.env.ELEVENLABS_API_KEY
-});
+const axios = require('axios');
 
 async function speakText(text) {
   try {
-    const audio = await elevenlabs.textToSpeech.convert(
-      process.env.ELEVENLABS_VOICE_ID,
+    const cleanText = text.replace(/[*#[\]]/g, '').slice(0, 500);
+
+    const response = await axios.post(
+      `https://api.minimaxi.chat/v1/t2a_v2?GroupId=${process.env.MINIMAX_GROUP_ID}`,
       {
-        text: text.slice(0, 500), // 限制长度
-        model_id: 'eleven_turbo_v2_5',
-        output_format: 'mp3_44100_128'
+        model: 'speech-02-hd',
+        text: cleanText,
+        stream: false,
+        voice_setting: {
+          voice_id: 'Wise_Woman',
+          speed: 1.0,
+          vol: 1.0,
+          pitch: 0
+        },
+        audio_setting: {
+          sample_rate: 32000,
+          bitrate: 128000,
+          format: 'mp3',
+          channel: 1
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.MINIMAX_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
       }
     );
 
-    const chunks = [];
-    for await (const chunk of audio) chunks.push(chunk);
-    return Buffer.concat(chunks).toString('base64');
+    const audioHex = response.data?.data?.audio;
+    if (!audioHex) throw new Error('No audio data returned');
+    return Buffer.from(audioHex, 'hex').toString('base64');
   } catch (err) {
-    console.error('TTS 错误:', err.message);
+    console.error('TTS 错误:', err.response?.data || err.message);
     return null;
   }
 }
