@@ -18,7 +18,15 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'SG Property Agent is running! 🏠' });
 });
 
-// 文字对话
+// TTS 单独接口 — 前端拿到文字后再来取音频
+app.post('/tts', async (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.json({ audioBase64: null });
+  const audioBase64 = await speakText(text);
+  res.json({ audioBase64 });
+});
+
+// 文字对话 — 立刻返回文字，不等语音
 app.post('/chat', async (req, res) => {
   try {
     const { sessionId = uuid(), message } = req.body;
@@ -31,20 +39,17 @@ app.post('/chat', async (req, res) => {
       console.log('🔍 开始搜索房源，筛选条件:', result.filters);
       const listings = await scraperOrchestrator.searchAll(result.filters);
       const recommendation = await agent.recommendListings(sess, listings);
-      const audioBase64 = await speakText(recommendation);
       sessionManager.saveSession(sessionId, sess);
       return res.json({
         sessionId,
         message: recommendation,
         listings: listings.slice(0, 5),
-        audioBase64,
         searchCompleted: true
       });
     }
 
-    const audioBase64 = await speakText(result.message);
     sessionManager.saveSession(sessionId, sess);
-    res.json({ sessionId, message: result.message, audioBase64 });
+    res.json({ sessionId, message: result.message });
   } catch (err) {
     console.error('Chat error:', err.message);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });

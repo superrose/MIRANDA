@@ -19,6 +19,22 @@ Optional filter fields: minBudget, type ("HDB"/"condo"/"room"/"studio"), beds, r
 
 Keep responses short, warm, and helpful. Always respond in English.`;
 
+// Instant replies for common greetings — no API call needed
+const GREETING_PATTERNS = /^(hi|hello|hey|good morning|good afternoon|good evening|yo|sup|helo|hii|hiii|howdy|greetings|what's up|whats up|how are you|how r u)[\s!?.]*$/i;
+
+const GREETING_REPLIES = [
+  "Hi there! 👋 I'm your Singapore property assistant. Are you looking to rent a place? Tell me your budget and preferred area!",
+  "Hello! 🏠 Ready to help you find the perfect rental in Singapore. What's your budget and which area are you looking at?",
+  "Hey! Great to have you here. Looking for a place to rent in Singapore? Tell me what you need — budget, location, room type!"
+];
+
+function getInstantReply(message) {
+  if (GREETING_PATTERNS.test(message.trim())) {
+    return GREETING_REPLIES[Math.floor(Math.random() * GREETING_REPLIES.length)];
+  }
+  return null;
+}
+
 // Keywords that indicate the user actually wants to find a property
 const PROPERTY_KEYWORDS = [
   'room', 'condo', 'hdb', 'apartment', 'flat', 'studio', 'rent', 'rental',
@@ -35,6 +51,14 @@ function userWantsToSearch(message) {
 
 class PropertyAgent {
   async chat(session, userMessage) {
+    // Instant reply for greetings — skip API call entirely
+    const instant = getInstantReply(userMessage);
+    if (instant) {
+      session.messages.push({ role: 'user', content: userMessage });
+      session.messages.push({ role: 'assistant', content: instant });
+      return { action: 'chat', message: instant };
+    }
+
     session.messages.push({ role: 'user', content: userMessage });
 
     const response = await axios.post(
