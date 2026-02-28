@@ -1,23 +1,21 @@
 const PropertyGuruScraper = require('./portals/PropertyGuruScraper');
 const NinetyNineScraper = require('./portals/NinetyNineScraper');
-const RentlyScraper = require('./portals/RentlyScraper');
-const ColiwooScraper = require('./portals/ColiwooScraper');
-const CoveScraper = require('./portals/CoveScraper');
 
 class ScraperOrchestrator {
   async searchAll(filters) {
     const scrapers = [
       new PropertyGuruScraper(),
-      new NinetyNineScraper(),
-      new RentlyScraper(),
-      new ColiwooScraper(),
-      new CoveScraper()
+      new NinetyNineScraper()
     ];
 
     console.log('🔍 开始同时搜索 5 个房产网站...');
 
+    // 每个网站最多等 25 秒，超时就跳过
+    const withTimeout = (promise, ms) =>
+      Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+
     const results = await Promise.allSettled(
-      scrapers.map(s => s.search(filters))
+      scrapers.map(s => withTimeout(s.search(filters), 25000))
     );
 
     const allListings = results
