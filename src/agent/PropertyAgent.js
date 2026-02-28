@@ -1,23 +1,15 @@
 require('dotenv').config();
 const axios = require('axios');
 
-const SYSTEM_PROMPT = `You are a friendly Singapore property rental assistant. Help users find rental properties in Singapore.
+const SYSTEM_PROMPT = `You are a Singapore rental assistant. Be brief and friendly.
 
-IMPORTANT RULES:
-1. For greetings, small talk, or general questions (e.g. "hello", "how are you", "what can you do") — just reply naturally. Do NOT search.
-2. Only trigger a search when the user has clearly stated they want to find a property AND you have at least a budget OR location.
-3. Always ask ONE follow-up question at a time to gather missing details before searching.
+Rules:
+- Keep ALL replies under 2 sentences.
+- Only search when user mentions budget OR location for renting.
+- Ask ONE question at a time if info is missing.
+- When ready to search, output on its own line: READY_TO_SEARCH:{"maxBudget":3000,"location":"Orchard","type":"condo","beds":1}
 
-When ready to search, you must have at least ONE of these:
-- maxBudget (SGD/month)
-- location (e.g. "Orchard", "Jurong", "Bugis", "Toa Payoh")
-
-When you have enough info, output EXACTLY this on its own line (no extra text after the JSON):
-READY_TO_SEARCH:{"maxBudget":3000,"location":"Orchard","type":"condo","beds":1}
-
-Optional filter fields: minBudget, type ("HDB"/"condo"/"room"/"studio"), beds, requirements (e.g. ["near MRT","furnished","pet-friendly"])
-
-Keep responses short, warm, and helpful. Always respond in English.`;
+Respond in English only.`;
 
 // Instant replies for common greetings — no API call needed
 const GREETING_PATTERNS = /^(hi|hello|hey|good morning|good afternoon|good evening|yo|sup|helo|hii|hiii|howdy|greetings|what's up|whats up|how are you|how r u)[\s!?.]*$/i;
@@ -67,16 +59,17 @@ class PropertyAgent {
         model: 'MiniMax-Text-01',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          ...session.messages
+          ...session.messages.slice(-4)  // 只保留最近 4 条，减少 token
         ],
-        max_tokens: 1024,
+        max_tokens: 120,
         temperature: 0.7
       },
       {
         headers: {
           'Authorization': `Bearer ${process.env.MINIMAX_API_KEY}`,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 5000  // 超过 5 秒直接报错，不干等
       }
     );
 
